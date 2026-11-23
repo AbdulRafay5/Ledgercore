@@ -50,6 +50,10 @@ Amounts must be positive with no more than two decimal places. Insufficient fund
 
 Transaction history records the operation type, amount, time and the source/destination account IDs where applicable. A transfer appears in both accounts' histories.
 
+## API documentation
+
+An OpenAPI 3 specification is available at [`src/main/resources/static/openapi.yaml`](src/main/resources/static/openapi.yaml). When the app is running, retrieve it from `http://localhost:8080/openapi.yaml`. You can import the file into an OpenAPI viewer such as Swagger Editor. A built-in Swagger UI is not installed.
+
 ## Try it in PowerShell
 
 Keep the server running in one terminal and use a second terminal:
@@ -67,7 +71,7 @@ Restart the server and retrieve the same account to check persistence.
 
 Run `./mvnw clean test` (macOS/Linux) or `.\mvnw.cmd clean test` (Windows). Tests use an isolated **H2 in-memory database**, so PostgreSQL credentials are not needed to run them.
 
-GitHub Actions also runs the Maven tests on pushes to `main` and on pull requests.
+GitHub Actions also runs the Maven tests on pushes to `main` and on pull requests. Integration tests exercise account and transaction repositories against H2 and check that rejected transfers do not change balances or create transaction records. These are not PostgreSQL-specific integration tests.
 
 ## How it's organized
 
