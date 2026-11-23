@@ -1,64 +1,81 @@
 # LedgerCore
 
-A Java 21 / Spring Boot 4 banking REST API portfolio project.
+A small banking REST API built with **Java 21, Spring Boot 4, Spring Data JPA and PostgreSQL**. This is a portfolio learning project, not a real banking platform.
 
-## Current functionality
+## What it does
 
-- Create and retrieve bank accounts
-- Deposit and withdraw funds
-- Transfer funds between accounts
-- Reject invalid amounts, insufficient funds, and missing accounts
-- JUnit service tests and a health endpoint
+- Create accounts and look up balances
+- Deposit and withdraw money
+- Transfer money between two accounts
+- Save accounts and transaction history in PostgreSQL
+- View a single account's deposits, withdrawals and transfers
+- Reject invalid amounts, missing accounts and insufficient funds
+- Lock account rows during balance changes and update balances and history together in a database transaction
 
-**MVP limitation:** Accounts are stored in memory and are reset when the application restarts. This is a learning/demo backend, **not** a production banking system. PostgreSQL, authentication, audit logging, durable transactions, and integration tests are future work.
+## Get started
 
-## Requirements
+You need Java 21 and PostgreSQL running locally.
 
-Java 21. The repository includes a Maven wrapper.
-
-## Run locally
+1. Create a PostgreSQL database named `ledgercore`.
+2. Create a PostgreSQL login role named `ledgercore_app` with a password. Grant it access to the database and permission to create tables in the `public` schema.
+3. Set the password in an environment variable **in your terminal**, not in source code.
 
 On Windows PowerShell:
 
 ```powershell
-.\mvnw.cmd test
+cd C:\Ledger\ledgercore\ledgercore
+$env:LEDGERCORE_DB_PASSWORD = Read-Host "Database password" -MaskInput
 .\mvnw.cmd spring-boot:run
 ```
 
-The application listens on `http://localhost:8080`.
+If you cloned the repository elsewhere, run the commands from that repository's root directory instead.
 
-## API endpoints
+The application uses `jdbc:postgresql://localhost:5432/ledgercore` by default. Override `LEDGERCORE_DB_URL` and `LEDGERCORE_DB_USER` if needed. The server listens on `http://localhost:8080`.
 
-| Method | Endpoint | JSON body | Result |
-| --- | --- | --- | --- |
-| GET | `/api/health` | — | Health text |
-| POST | `/api/accounts` | `{"ownerName":"Alex"}` | 201 + account |
-| GET | `/api/accounts/1` | — | 200 + account, or 404 |
-| POST | `/api/accounts/1/deposits` | `{"amount":100.00}` | Updated account |
-| POST | `/api/accounts/1/withdrawals` | `{"amount":25.00}` | Updated account |
-| POST | `/api/accounts/transfers` | `{"fromAccountId":1,"toAccountId":2,"amount":20.00}` | 204 |
+For this demo, Hibernate updates the database schema on startup (`ddl-auto=update`). Production systems should use versioned database migrations instead.
 
-Amounts must be positive with no more than two decimal places. Insufficient funds return 409; invalid input returns 400.
+## API
 
-## Example
+| Method | Route | Request body |
+| --- | --- | --- |
+| GET | `/api/health` | — |
+| POST | `/api/accounts` | `{"ownerName":"Alex"}` |
+| GET | `/api/accounts/1` | — |
+| POST | `/api/accounts/1/deposits` | `{"amount":100.00}` |
+| POST | `/api/accounts/1/withdrawals` | `{"amount":25.00}` |
+| POST | `/api/accounts/transfers` | `{"fromAccountId":1,"toAccountId":2,"amount":20.00}` |
+| GET | `/api/accounts/1/transactions` | — |
+
+Amounts must be positive with no more than two decimal places. Insufficient funds return HTTP 409; invalid amounts return HTTP 400. Account lookups return HTTP 404 when the account does not exist.
+
+Transaction history records the operation type, amount, time and the source/destination account IDs where applicable. A transfer appears in both accounts' histories.
+
+## Try it in PowerShell
+
+Keep the server running in one terminal and use a second terminal:
 
 ```powershell
-Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/accounts -ContentType application/json -Body '{"ownerName":"Alex"}'
-Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/accounts/1/deposits -ContentType application/json -Body '{"amount":100.00}'
-Invoke-RestMethod -Uri http://localhost:8080/api/accounts/1
+$account = Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/accounts -ContentType application/json -Body '{"ownerName":"Alex"}'
+$id = $account.id
+Invoke-RestMethod -Method Post -Uri "http://localhost:8080/api/accounts/$id/deposits" -ContentType application/json -Body '{"amount":100.00}'
+Invoke-RestMethod -Uri "http://localhost:8080/api/accounts/$id/transactions"
 ```
 
-## Design
+Restart the server and retrieve the same account to check persistence.
 
-`controller/` defines HTTP routes and request DTOs; `service/` contains account operations; `model/` holds account data. Service methods are synchronized for atomic in-memory balance updates within a single process. No database is currently configured.
+## Tests
 
-## Testing
+Run `./mvnw clean test` (macOS/Linux) or `.\mvnw.cmd clean test` (Windows). Tests use an isolated **H2 in-memory database**, so PostgreSQL credentials are not needed to run them.
 
-Run `.\mvnw.cmd test` from PowerShell. The service tests cover account creation, retrieval, deposits, withdrawals, transfers, and invalid operations.
+GitHub Actions also runs the Maven tests on pushes to `main` and on pull requests.
 
-## Roadmap
+## How it's organized
 
-- PostgreSQL persistence and database transactions
-- Request validation and structured error responses
-- API integration tests
-- Authentication, audit trail, Docker and CI
+- `controller/`: REST endpoints
+- `service/`: business rules, transaction boundaries and row locking
+- `model/`: JPA entities
+- `repository/`: database access
+
+## Known limitations
+
+This project has **no authentication or authorization**. Anyone with network access to the API can operate on any account. It is not suitable for real funds or deployment as a public banking service. Future improvements include request validation, API integration tests, versioned migrations, structured error responses and authentication.
