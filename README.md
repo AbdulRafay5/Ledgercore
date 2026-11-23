@@ -1,6 +1,6 @@
 # LedgerCore
 
-A small banking REST API built with **Java 21, Spring Boot 4, Spring Data JPA and PostgreSQL**. This is a portfolio learning project, not a real banking platform.
+A small banking REST API built with Java 21, Spring Boot 4, Spring Data JPA and PostgreSQL. This is a learning project, not a real banking platform.
 
 ## What it does
 
