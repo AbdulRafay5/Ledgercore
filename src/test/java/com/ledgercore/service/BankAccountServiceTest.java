@@ -22,7 +22,7 @@ class BankAccountServiceTest {
         BankAccount sarah = service.createAccount("Sarah");
         assertNotEquals(alex.getId(), sarah.getId());
         assertNotNull(sarah.getId());
-        assertEquals(BigDecimal.ZERO, alex.getBalance());
+        assertEquals(0, BigDecimal.ZERO.compareTo(alex.getBalance()));
         assertEquals("Sarah", service.getAccountById(sarah.getId()).getOwnerName());
         assertNull(service.getAccountById(999L));
     }
@@ -55,7 +55,7 @@ class BankAccountServiceTest {
         assertThrows(ResponseStatusException.class, () -> service.transfer(alex.getId(), sarah.getId(), BigDecimal.ONE));
         assertThrows(ResponseStatusException.class, () -> service.transfer(alex.getId(), alex.getId(), BigDecimal.ONE));
         assertThrows(ResponseStatusException.class, () -> service.createAccount(" "));
-        assertEquals(BigDecimal.ZERO, service.getAccountById(alex.getId()).getBalance());
-        assertEquals(BigDecimal.ZERO, service.getAccountById(sarah.getId()).getBalance());
+        assertEquals(0, BigDecimal.ZERO.compareTo(service.getAccountById(alex.getId()).getBalance()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(service.getAccountById(sarah.getId()).getBalance()));
     }
 }
