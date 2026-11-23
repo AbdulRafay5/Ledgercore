@@ -1,6 +1,8 @@
 package com.ledgercore.controller;
 
 import com.ledgercore.model.BankAccount;
+import com.ledgercore.model.TransactionRecord;
+import java.util.List;
 import com.ledgercore.service.BankAccountService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -30,6 +32,11 @@ public class BankAccountController {
     public ResponseEntity<BankAccount> get(@PathVariable Long id) {
         BankAccount account = service.getAccountById(id);
         return account == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(account);
+    }
+
+    @GetMapping("/{id}/transactions")
+    public List<TransactionRecord> transactions(@PathVariable Long id) {
+        return service.getTransactions(id);
     }
 
     @PostMapping("/{id}/deposits")
