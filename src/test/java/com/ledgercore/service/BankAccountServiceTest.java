@@ -2,28 +2,33 @@ package com.ledgercore.service;
 
 import com.ledgercore.model.BankAccount;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@SpringBootTest
+@Transactional
 class BankAccountServiceTest {
+    @Autowired
+    private BankAccountService service;
     @Test
     void createsAccountsWithUniqueIdsAndZeroBalances() {
-        BankAccountService service = new BankAccountService();
         BankAccount alex = service.createAccount("Alex");
         BankAccount sarah = service.createAccount("Sarah");
-        assertEquals(1L, alex.getId());
-        assertEquals(2L, sarah.getId());
+        assertNotEquals(alex.getId(), sarah.getId());
+        assertNotNull(sarah.getId());
         assertEquals(BigDecimal.ZERO, alex.getBalance());
-        assertEquals("Sarah", service.getAccountById(2L).getOwnerName());
+        assertEquals("Sarah", service.getAccountById(sarah.getId()).getOwnerName());
         assertNull(service.getAccountById(999L));
     }
 
     @Test
     void depositsAndWithdrawsMoney() {
-        BankAccountService service = new BankAccountService();
         BankAccount account = service.createAccount("Alex");
         service.deposit(account.getId(), new BigDecimal("100.00"));
         BankAccount updated = service.withdraw(account.getId(), new BigDecimal("35.50"));
@@ -32,7 +37,6 @@ class BankAccountServiceTest {
 
     @Test
     void transfersMoneyBetweenAccounts() {
-        BankAccountService service = new BankAccountService();
         BankAccount alex = service.createAccount("Alex");
         BankAccount sarah = service.createAccount("Sarah");
         service.deposit(alex.getId(), new BigDecimal("100.00"));
@@ -43,7 +47,6 @@ class BankAccountServiceTest {
 
     @Test
     void rejectsInvalidOperationsWithoutChangingBalances() {
-        BankAccountService service = new BankAccountService();
         BankAccount alex = service.createAccount("Alex");
         BankAccount sarah = service.createAccount("Sarah");
         assertThrows(ResponseStatusException.class, () -> service.deposit(alex.getId(), new BigDecimal("-1")));
