@@ -1,6 +1,7 @@
 package com.ledgercore.service;
 
 import com.ledgercore.model.BankAccount;
+import com.ledgercore.model.TransactionRecord;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -43,6 +44,33 @@ class BankAccountServiceTest {
         service.transfer(alex.getId(), sarah.getId(), new BigDecimal("40.00"));
         assertEquals(0, new BigDecimal("60.00").compareTo(service.getAccountById(alex.getId()).getBalance()));
         assertEquals(0, new BigDecimal("40.00").compareTo(service.getAccountById(sarah.getId()).getBalance()));
+    }
+
+    @Test
+    void recordsTransactionHistoryForBothSidesOfTransfers() {
+        BankAccount alex = service.createAccount("Alex");
+        BankAccount sarah = service.createAccount("Sarah");
+        service.deposit(alex.getId(), new BigDecimal("100.00"));
+        service.transfer(alex.getId(), sarah.getId(), new BigDecimal("40.00"));
+        service.withdraw(sarah.getId(), new BigDecimal("10.00"));
+
+        var alexHistory = service.getTransactions(alex.getId());
+        var sarahHistory = service.getTransactions(sarah.getId());
+        assertEquals(2, alexHistory.size());
+        assertEquals(2, sarahHistory.size());
+        assertTrue(alexHistory.stream().anyMatch(t -> t.getType() == TransactionRecord.Type.DEPOSIT));
+        assertTrue(alexHistory.stream().anyMatch(t -> t.getType() == TransactionRecord.Type.TRANSFER));
+        assertTrue(sarahHistory.stream().anyMatch(t -> t.getType() == TransactionRecord.Type.WITHDRAWAL));
+        assertTrue(sarahHistory.stream().anyMatch(t -> t.getType() == TransactionRecord.Type.TRANSFER));
+        assertTrue(alexHistory.stream().allMatch(t -> t.getCreatedAt() != null));
+    }
+
+    @Test
+    void failedWithdrawalDoesNotCreateHistory() {
+        BankAccount account = service.createAccount("Alex");
+        assertThrows(ResponseStatusException.class, () -> service.withdraw(account.getId(), BigDecimal.ONE));
+        assertTrue(service.getTransactions(account.getId()).isEmpty());
+        assertThrows(ResponseStatusException.class, () -> service.getTransactions(999999L));
     }
 
     @Test
