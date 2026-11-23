@@ -1,6 +1,9 @@
 package com.ledgercore.service;
 
 import com.ledgercore.model.BankAccount;
+import com.ledgercore.model.TransactionRecord;
+import com.ledgercore.repository.TransactionRecordRepository;
+import java.util.List;
 import com.ledgercore.repository.BankAccountRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -12,9 +15,11 @@ import java.math.BigDecimal;
 @Service
 public class BankAccountService {
     private final BankAccountRepository repository;
+    private final TransactionRecordRepository transactions;
 
-    public BankAccountService(BankAccountRepository repository) {
+    public BankAccountService(BankAccountRepository repository, TransactionRecordRepository transactions) {
         this.repository = repository;
+        this.transactions = transactions;
     }
 
     @Transactional
@@ -30,12 +35,22 @@ public class BankAccountService {
         return id == null ? null : repository.findById(id).orElse(null);
     }
 
+    @Transactional(readOnly = true)
+    public List<TransactionRecord> getTransactions(Long accountId) {
+        if (accountId == null || !repository.existsById(accountId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found");
+        }
+        return transactions.findByFromAccountIdOrToAccountIdOrderByCreatedAtDescIdDesc(accountId, accountId);
+    }
+
     @Transactional
     public BankAccount deposit(Long id, BigDecimal amount) {
         validateAmount(amount);
         BankAccount account = requireLockedAccount(id);
         account.setBalance(account.getBalance().add(amount));
-        return repository.save(account);
+        BankAccount saved = repository.save(account);
+        transactions.save(new TransactionRecord(TransactionRecord.Type.DEPOSIT, null, id, amount));
+        return saved;
     }
 
     @Transactional
@@ -46,7 +61,9 @@ public class BankAccountService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Insufficient funds");
         }
         account.setBalance(account.getBalance().subtract(amount));
-        return repository.save(account);
+        BankAccount saved = repository.save(account);
+        transactions.save(new TransactionRecord(TransactionRecord.Type.WITHDRAWAL, id, null, amount));
+        return saved;
     }
 
     @Transactional
@@ -67,6 +84,7 @@ public class BankAccountService {
         destination.setBalance(destination.getBalance().add(amount));
         repository.save(source);
         repository.save(destination);
+        transactions.save(new TransactionRecord(TransactionRecord.Type.TRANSFER, fromId, toId, amount));
     }
 
     private BankAccount requireLockedAccount(Long id) {
